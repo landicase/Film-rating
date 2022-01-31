@@ -1,12 +1,13 @@
 package com.epam.rating.dao.impl;
 
-import com.epam.rating.builder.impl.ReviewBuilder;
-import com.epam.rating.dao.api.ReviewDao;
+import com.epam.rating.dao.ReviewDao;
 import com.epam.rating.entity.Review;
+import com.epam.rating.entity.enums.Rating;
 import com.epam.rating.exception.ConnectionPoolException;
 import com.epam.rating.exception.DaoException;
 import com.epam.rating.pool.ConnectionPool;
-import com.epam.rating.pool.ConnectionPoolException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -16,109 +17,214 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class ReviewDaoImpl implements ReviewDao {
-    public static final String ID = "id";
-    public static final String REVIEW = "review";
-    public static final String MARK = "mark";
-    public static final String LIKES_AMOUNT = "likesAmount";
-    public static final String DISLIKES_AMOUNT = "dislikesAmount";
-    public static final String IS_LIKED = "is_liked";
+public class ReviewDaoImpl extends AbstractDaoImpl<Review> implements ReviewDao {
+    private static final Logger LOGGER = LogManager.getLogger(ReviewDaoImpl.class);
+    public static final ReviewDaoImpl INSTANCE = new ReviewDaoImpl(ConnectionPool.getInstance());
 
-    ConnectionPool connectable;
+    private static final String SQL_CREATE = "INSERT INTO film_review (film_id, user_id, rating, review)" + "VALUES (?, ?, ?, ?)";
+    private static final String SQL_FIND_ALL = "SELECT * FROM film_review";
+    private static final String SQL_FIND_ALL_BY_FILM_ID = "SELECT * FROM film_review WHERE film_id = ?";
+    private static final String SQL_FIND_ALL_BY_USER_ID = "SELECT * FROM film_review WHERE user_id = ?";
+    private static final String SQL_FIND_BY_FILM_ID_USER_ID = "SELECT * FROM film_review WHERE film_id = ? AND user_id = ?";
+    private static final String SQL_DELETE = "DELETE FROM film_review WHERE review_id = ? AND user_id = ? ";
+    private static final String SQL_UPDATE = "UPDATE film_review SET text = ? WHERE review_id = ? user_id = ?";
+    private static final String SQL_FIND_BY_ID = "SELECT * FROM film_review WHERE user_id = ? ";
+    private static final String SQL_FIND_AVERAGE = "SELECT AVG(rating) FROM film_review WHERE film_id = ?";
 
-    {
-        try {
-            connectable = ConnectionPool.getInstance();
-        } catch (ConnectionPoolException e) {
-            e.printStackTrace();
-        }
+
+    protected ReviewDaoImpl(ConnectionPool connectionPool) {
+        super(connectionPool);
     }
 
-    public ReviewDaoImpl() {
+    @Override
+    protected void prepareStatement(PreparedStatement preparedStatement, Review entity) throws SQLException {
+        preparedStatement.setInt(1, entity.getFilmID());
+        preparedStatement.setInt(2, entity.getUserID());
+        preparedStatement.setInt(3, entity.getRating().getId());
+        preparedStatement.setString(4, entity.getReview());
     }
 
-    ;
+    @Override
+    protected Optional<Review> parseResultSet(ResultSet resultSet) throws SQLException, DaoException {
+        Review review = Review.builder().setfilmID(resultSet.getInt("film_id"))
+                .setUserID(resultSet.getInt("user_id"))
+                .setRating(Rating.resolveGenreById(resultSet.getInt("rating")))
+                .setReview(resultSet.getString("text"))
+                .build();
+        return Optional.of(review);
+    }
 
-    public static String GET_REVIEWS_BY_ID = "select review.id, review.review, review.mark, review.likes_amount, review.dislikes_amount from review WHERE review.film_id=? AND review.users_id=?;";
+    @Override
+    protected String getUpdateSql() {
+        return SQL_UPDATE;
+    }
 
-    public static String GET_REVIEWS = "select * from review;";
-    public static String ADD_REVIEW = "insert into review values (review, mark, film_id, users_id) values(?, ?, ?, ?);";
+    @Override
+    protected String getFindAllSql() {
+        return SQL_FIND_ALL;
+    }
 
-    public List<Review> getAll() throws SQLException, ConnectionPoolException {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet resultSet = null;
-        try {
-            List<Review> users = new ArrayList<>();
-            connection = connectable.getConnection();
-            preparedStatement = connection.prepareStatement(GET_REVIEWS);
-            resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                users.add(ReviewBuilder.build(resultSet));
+    @Override
+    protected String getCreateSql() {
+        return SQL_CREATE;
+    }
+
+    @Override
+    protected String getDeleteSql() {
+        return SQL_DELETE;
+    }
+
+    @Override
+    protected String getFindByIdSql() {
+        return SQL_FIND_BY_ID;
+    }
+
+    protected String getFindAllByfilmIdSql() {
+        return SQL_FIND_ALL_BY_FILM_ID;
+    }
+
+    protected String getFindAllByUserIdSql() {
+        return SQL_FIND_ALL_BY_USER_ID;
+    }
+
+    protected String getFindByfilmIdUserIdSql() {
+        return SQL_FIND_BY_FILM_ID_USER_ID;
+    }
+
+    public static String getFindAverageSql() {
+        return SQL_FIND_AVERAGE;
+    }
+
+    @Override
+    public boolean update(Review entity) throws DaoException {
+        boolean updated = false;
+        try (Connection connection = connectionPool.getConnection()) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(getUpdateSql())) {
+                connection.setAutoCommit(false);
+                preparedStatement.setString(1, entity.getReview());
+                preparedStatement.setInt(2, entity.getFilmID());
+                preparedStatement.setInt(3, entity.getUserID());
+                if (preparedStatement.executeUpdate() != 0) {
+                    updated = true;
+                }
             }
-            return users;
-        } catch (SQLException | ConnectionPoolException sqlE) {
-            throw new SQLException();
-        } finally {
-            connectable.closeConnection(connection, preparedStatement, resultSet);
+            connection.commit();
+            connection.setAutoCommit(true);
+        } catch (SQLException | ConnectionPoolException e) {
+            LOGGER.error("Failed to update entity", new DaoException(e.getMessage()));
+            Thread.currentThread().interrupt();
         }
+        return updated;
     }
+
 
     @Override
-    public void save(Review entity) throws DaoException {
-
-    }
-
-    @Override
-    public void deleteById(int id) throws DaoException {
-
-    }
-
-    @Override
-    public Optional<Review> findById(int id) throws DaoException {
-        return Optional.empty();
-    }
-
-    public List<Review> getReviewById(int filmId, int userId) throws SQLException, ConnectionPoolException {
-        Connection connection = null;
-        PreparedStatement preparedStatement = null;
-        ResultSet resultSet = null;
-        try {
-            List<Review> reviews = new ArrayList<>();
-            connection = connectable.getConnection();
-            preparedStatement = connection.prepareStatement(GET_REVIEWS_BY_ID);
-            preparedStatement.setInt(1, filmId);
-            preparedStatement.setInt(2, userId);
-            resultSet = preparedStatement.executeQuery();
-            while (resultSet.next()) {
-                reviews.add(ReviewBuilder.build(resultSet));
+    public List<Review> findAllByFilmId(Integer filmId) throws DaoException {
+        List<Review> reviewList = new ArrayList<>();
+        try (Connection connection = connectionPool.getConnection()) {
+            try (PreparedStatement statement = connection.prepareStatement(getFindAllByfilmIdSql())) {
+                connection.setAutoCommit(false);
+                statement.setInt(1, filmId);
+                ResultSet resultSet = statement.executeQuery();
+                while (resultSet.next()) {
+                    Optional<Review> optionalReview = parseResultSet(resultSet);
+                    optionalReview.ifPresent(reviewList::add);
+                }
             }
-
-            return reviews;
-        } catch (SQLException | ConnectionPoolException sqlE) {
-            throw new SQLException();
-        } finally {
-            connectable.closeConnection(connection, preparedStatement, resultSet);
+            connection.commit();
+            connection.setAutoCommit(true);
+        } catch (SQLException | ConnectionPoolException e) {
+            LOGGER.error(new DaoException(e.getMessage()));
+            Thread.currentThread().interrupt();
         }
+        return reviewList;
     }
 
-    public int add(Review review) throws SQLException, InterruptedException, ConnectionPoolException {
-        Connection connection = connectable.getConnection();
-        PreparedStatement pr = null;
-
-        try {
-            pr = connection.prepareStatement(ADD_REVIEW);
-
-            pr.setString(1, review.getReview());
-            pr.setInt(2, review.getMark());
-
-            pr.executeUpdate();
-        } catch (SQLException | NullPointerException e) {
-            //TODO
-        } finally {
-            connectable.closeConnection(connection, pr);
+    @Override
+    public List<Review> findAllByUserId(Integer userId) throws DaoException {
+        List<Review> reviewList = new ArrayList<>();
+        try (Connection connection = connectionPool.getConnection()) {
+            try (PreparedStatement statement = connection.prepareStatement(getFindAllByUserIdSql())) {
+                connection.setAutoCommit(false);
+                statement.setInt(1, userId);
+                ResultSet resultSet = statement.executeQuery();
+                while (resultSet.next()) {
+                    Optional<Review> optionalReview = parseResultSet(resultSet);
+                    optionalReview.ifPresent(reviewList::add);
+                }
+            }
+            connection.commit();
+            connection.setAutoCommit(true);
+        } catch (SQLException | ConnectionPoolException e) {
+            LOGGER.error(new DaoException(e.getMessage()));
+            Thread.currentThread().interrupt();
         }
-        return 1;
-
+        return reviewList;
     }
+
+    @Override
+    public Optional<Review> findByFilmIdUserId(Integer filmId, Integer userId) throws DaoException {
+        Optional<Review> optionalReview = Optional.empty();
+        try (Connection connection = connectionPool.getConnection()) {
+            connection.setAutoCommit(false);
+            try (PreparedStatement statement = connection.prepareStatement(getFindByfilmIdUserIdSql())) {
+                statement.setInt(1, filmId);
+                statement.setInt(2, userId);
+                ResultSet resultSet = statement.executeQuery();
+
+                while (resultSet.next()) {
+                    optionalReview = parseResultSet(resultSet);
+                }
+            }
+            connection.commit();
+            connection.setAutoCommit(true);
+        } catch (SQLException | ConnectionPoolException e) {
+            LOGGER.error(new DaoException(e.getMessage()));
+            Thread.currentThread().interrupt();
+        }
+        return optionalReview;
+    }
+
+    @Override
+    public Double getAverageRating(Integer filmId) throws DaoException {
+        double averageAppraisal = 0.0;
+        try (Connection connection = connectionPool.getConnection()) {
+            try (PreparedStatement statement = connection.prepareStatement(getFindAverageSql())) {
+                connection.setAutoCommit(false);
+                statement.setInt(1, filmId);
+                ResultSet resultSet = statement.executeQuery();
+                while (resultSet.next()) {
+                    averageAppraisal = resultSet.getDouble("AVG(rating)");
+                }
+            }
+            connection.commit();
+            connection.setAutoCommit(true);
+        } catch (SQLException | ConnectionPoolException e) {
+            LOGGER.error(new DaoException(e.getMessage()));
+            Thread.currentThread().interrupt();
+        }
+        return averageAppraisal;
+    }
+
+    @Override
+    public boolean deleteByFilmIdUserId(Integer filmId, Integer userID) throws DaoException {
+        boolean state = false;
+        try (Connection connection = connectionPool.getConnection()) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(getDeleteSql())) {
+                connection.setAutoCommit(false);
+                preparedStatement.setInt(1, filmId);
+                preparedStatement.setInt(2, userID);
+                if (!preparedStatement.execute()) {
+                    state = true;
+                }
+            }
+            connection.commit();
+            connection.setAutoCommit(true);
+        } catch (SQLException | ConnectionPoolException e) {
+            LOGGER.error("Failed to delete entity", new DaoException(e));
+            Thread.currentThread().interrupt();
+        }
+        return state;
+    }
+
 }

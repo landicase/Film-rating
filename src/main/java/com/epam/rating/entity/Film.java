@@ -1,132 +1,138 @@
 package com.epam.rating.entity;
 
+import com.epam.rating.entity.enums.Genre;
+
 import java.io.Serializable;
+import java.sql.Time;
 import java.util.List;
 import java.util.Objects;
 
-public class Film implements Serializable, Identifiable {
-    private int id;
-    private int productionYear;
-    private String name;
-    private String description;
-    private double rating;
-    private int reviewAmount;
-    private String type;
-    private String ageRating;
-    private List<String> poster;
-    private List<String> trailer;
-    private List<String> genre;
-    private List<String> countryOfOrigin;
+public class Film extends AbstractIdentifiable {
+    private final String name;
+    private final String tagline;
+    private final String description;
+    private final Time duration;
+    private final Genre genre;
+    private final String poster;
+    private final int releaseYear;
+    private final Country releaseCountry;
 
-    public Film(int id, int production_year, String name, String description, double film_rating, int age_rating, String type, int review_amount) {
+    private Film(Builder builder) {
+
+        this.name = builder.name;
+        this.poster = builder.poster;
+        this.tagline = builder.tagline;
+        this.description = builder.description;
+        this.duration = builder.duration;
+        this.genre = builder.genre;
+        this.releaseYear = Objects.requireNonNull(builder.releaseYear, "releaseYear");
+        this.releaseCountry = builder.releaseCountry;
     }
 
-        public Film(int id, int productionYear, String name, String description,
-                double rating, int reviewAmount, String type, String ageRating) {
-        this.id = id;
-        this.productionYear = productionYear;
-        this.name = name;
-        this.description = description;
-        this.rating = rating;
-        this.reviewAmount = reviewAmount;
-        this.type = type;
-        this.ageRating = ageRating;
-    }
-    @Override
-    public Integer getId() {
-    return id;
-}
-
-    public void setId(int id) {
-        this.id = id;
-    }
-
-    public int getProductionYear() {
-        return productionYear;
-    }
-
-    public void setProductionYear(int productionYear) {
-        this.productionYear = productionYear;
+    public static Builder builder() {
+        return new Builder();
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public String getTagline() {
+        return tagline;
+    }
+
+    public Time getDuration() {
+        return duration;
+    }
+
+    public Genre getGenre() {
+        return genre;
+    }
+
+    public int getReleaseYear() {
+        return releaseYear;
+    }
+
+    public Country getCountry() {
+        return releaseCountry;
+    }
+
+    public String getPoster() {
+        return poster;
     }
 
     public String getDescription() {
         return description;
     }
 
-    public void setDescription(String description) {
-        this.description = description;
-    }
+    public static class Builder {
+        private String name;
+        private String tagline;
+        private String description;
+        private Time duration;
+        private Genre genre;
+        private String poster;
+        private Integer releaseYear;
+        private Country releaseCountry;
 
-    public double getRating() {
-        return rating;
-    }
+        private Builder() {
+        }
 
-    public void setRating(double rating) {
-        this.rating = rating;
-    }
+        public Builder setName(String name) {
+            this.name = name;
+            return this;
+        }
 
-    public int getReviewAmount() {
-        return reviewAmount;
-    }
+        public Builder setPoster(String poster) {
+            this.poster = poster;
+            return this;
+        }
 
-    public void setReviewAmount(int reviewAmount) {
-        this.reviewAmount = reviewAmount;
-    }
+        public Builder setTagline(String tagline) {
+            this.tagline = tagline;
+            return this;
+        }
 
-    public String getType() {
-        return type;
-    }
+        public Builder setDuration(Time duration) {
+            this.duration = duration;
+            return this;
+        }
 
-    public void setType(String type) {
-        this.type = type;
-    }
+        public Builder setGenre(Genre genre) {
+            this.genre = genre;
+            return this;
+        }
 
-    public String getAgeRating() {
-        return ageRating;
-    }
+        public Builder setReleaseYear(int releaseYear) {
+            this.releaseYear = releaseYear;
+            return this;
+        }
 
-    public void setAgeRating(String ageRating) {
-        this.ageRating = ageRating;
-    }
+        public Builder setReleaseCountry(Country releaseCountry) {
+            this.releaseCountry = releaseCountry;
+            return this;
+        }
 
-    public List<String> getPoster() {
-        return poster;
-    }
+        public Builder setDescription(String description) {
+            this.description = description;
+            return this;
+        }
 
-    public void setPoster(List<String> poster) {
-        this.poster = poster;
-    }
+        public Builder of(Film film) {
+            this.name = film.name;
+            this.poster = film.poster;
+            this.tagline = film.tagline;
+            this.description = film.description;
+            this.duration = film.duration;
+            this.genre = film.genre;
+            this.releaseYear = film.releaseYear;
+            this.releaseCountry = film.releaseCountry;
+            return this;
+        }
 
-    public List<String> getTrailer() {
-        return trailer;
-    }
-
-    public void setTrailer(List<String> trailer) {
-        this.trailer = trailer;
-    }
-
-    public List<String> getGenre() {
-        return genre;
-    }
-
-    public void setGenre(List<String> genre) {
-        this.genre = genre;
-    }
-
-    public List<String> getCountryOfOrigin() {
-        return countryOfOrigin;
-    }
-
-    public void setCountryOfOrigin(List<String> countryOfOrigin) {
-        this.countryOfOrigin = countryOfOrigin;
+        public Film build() {
+            return new Film(this);
+        }
     }
 
     @Override
@@ -134,29 +140,11 @@ public class Film implements Serializable, Identifiable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Film film = (Film) o;
-        return id == film.id && productionYear == film.productionYear && Double.compare(film.rating, rating) == 0 && reviewAmount == film.reviewAmount && Objects.equals(name, film.name) && Objects.equals(description, film.description) && Objects.equals(type, film.type) && Objects.equals(ageRating, film.ageRating) && Objects.equals(poster, film.poster) && Objects.equals(trailer, film.trailer) && Objects.equals(genre, film.genre) && Objects.equals(countryOfOrigin, film.countryOfOrigin);
+        return releaseYear == film.releaseYear && Objects.equals(name, film.name) && Objects.equals(tagline, film.tagline) && Objects.equals(description, film.description) && Objects.equals(duration, film.duration) && genre == film.genre && Objects.equals(poster, film.poster) && Objects.equals(releaseCountry, film.releaseCountry);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, productionYear, name, description, rating, reviewAmount, type, ageRating, poster, trailer, genre, countryOfOrigin);
-    }
-
-    @Override
-    public String toString() {
-        return "Film{" +
-                "id=" + id +
-                ", productionYear=" + productionYear +
-                ", name='" + name + '\'' +
-                ", description='" + description + '\'' +
-                ", rating=" + rating +
-                ", reviewAmount=" + reviewAmount +
-                ", type='" + type + '\'' +
-                ", ageRating='" + ageRating + '\'' +
-                ", poster=" + poster +
-                ", trailer=" + trailer +
-                ", genre=" + genre +
-                ", countryOfOrigin=" + countryOfOrigin +
-                '}';
+        return Objects.hash(name, tagline, description, duration, genre, poster, releaseYear, releaseCountry);
     }
 }
